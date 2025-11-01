@@ -1,65 +1,399 @@
-import Image from "next/image";
+// src/app/page.tsx
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+"use client"; 
+
+import React, { useState } from 'react';
+import { 
+  mockOpportunitiesList, 
+  mockPracticeItems, 
+  defaultStudentProfile, 
+  mockApplicantsList, 
+  Opportunity, 
+  StudentProfile 
+} from '../data/mock-data';
+import { Layout } from '../components/layout';
+import { Modal } from '../components/ui';
+import { LoginModal, SignUpModal } from '../components/auth-modals';
+
+// Student Pages
+import { HomePage } from '../pages/student/home-page'; 
+import { OpportunitiesPage, OpportunityDetailPage } from '../pages/student/opportunities-pages'; 
+import { PracticePage, PracticeDetailPage } from '../pages/student/practice-pages'; 
+import { ProfilePage } from '../pages/student/profile-pages'; 
+
+// Company Pages and Components
+import { CompanyLayout } from '../pages/company/company-layout'; 
+import { CompanyDashboardHome, CompanyManagePostings, CompanyCreatePosting } from '../pages/company/company-pages'; 
+import { ApplicantProfilePage, AssignTaskModal, ScheduleInterviewModal, ViewApplicantsModal } from '../pages/company/applicant-management';
+
+
+/**
+ * Main App Component (Default export Page)
+ */
+export default function Page() {
+  const [currentPage, setCurrentPage] = useState("home"); 
+  const [companyPage, setCompanyPage] = useState("dashboard"); 
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<number | null>(null); 
+  const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null); 
+  const [opportunityFilter, setOpportunityFilter] = useState<string | null>(null); 
+
+  // Lifted State
+  const [opportunities, setOpportunities] = useState(mockOpportunitiesList); 
+  const [applicants, setApplicants] = useState(mockApplicantsList); 
+  const [studentProfile, setStudentProfile] = useState(defaultStudentProfile); 
+  
+  // Auth State
+  const [userRole, setUserRole] = useState<"none" | "student" | "company">("none"); 
+  const [modalView, setModalView] = useState<"login" | "signup" | null>(null); 
+  
+  // Company Action Modals/Pages State
+  const [applicantsModalOppId, setApplicantsModalOppId] = useState<number | null>(null); 
+  const [viewingApplicantId, setViewingApplicantId] = useState<number | null>(null); 
+  const [assigningTaskApplicantId, setAssigningTaskApplicantId] = useState<number | null>(null); 
+  const [schedulingInterviewApplicantId, setSchedulingInterviewApplicantId] = useState<number | null>(null); 
+
+
+  // --- Auth Handlers ---
+  const handleLogin = (role: "student" | "company") => {
+    setUserRole(role);
+    if (role === "student") { 
+      setCurrentPage("home"); 
+    } else {
+      setCompanyPage("dashboard"); 
+    }
+    setModalView(null); 
+  };
+
+  const handleSignUp = (role: "student" | "company") => {
+    setUserRole(role); 
+    if (role === "student") { 
+      setCurrentPage("home"); 
+    } else {
+      setCompanyPage("dashboard"); 
+    }
+    setModalView(null); 
+  };
+
+  const handleLogout = () => {
+    setUserRole("none"); 
+    setCurrentPage("home"); 
+  };
+
+  // --- Student Navigation Handler ---
+  const handleNavClick = (page: string, filter?: string) => {
+    setCurrentPage(page); 
+    if (page === "opportunities") { 
+      setOpportunityFilter(filter || ""); 
+    } else {
+      setOpportunityFilter(null); 
+    }
+    setSelectedOpportunityId(null); 
+    setSelectedPracticeId(null); 
+  };
+
+  // --- Company Navigation Handler ---
+  const handleCompanyNavClick = (page: string) => {
+    setCompanyPage(page); 
+    setViewingApplicantId(null); 
+  };
+
+  // --- Profile Save Handler ---
+  const handleSaveProfile = (newProfile: StudentProfile) => {
+    setStudentProfile(newProfile); 
+  };
+
+  // --- View Details Handlers ---
+  const handleViewDetails = (id: number) => {
+    setSelectedOpportunityId(id); 
+    setCurrentPage("opportunityDetail"); 
+  };
+
+  const handleBackToOpportunities = () => {
+    setSelectedOpportunityId(null); 
+    setCurrentPage("opportunities"); 
+  };
+
+  // --- Practice Handlers ---
+  const handleStartPractice = (id: number) => {
+    setSelectedPracticeId(id); 
+    setCurrentPage("practiceDetail"); 
+  };
+
+  const handleQuitPractice = () => {
+    setSelectedPracticeId(null); 
+    setCurrentPage("practice"); 
+  };
+
+  // --- Company Action Handlers ---
+  const handleCreatePosting = (newOppData: Omit<Opportunity, 'id'>) => {
+    const newOpp = {
+      ...newOppData,
+      id: opportunities.length + 100, 
+    };
+    setOpportunities(prevOps => [newOpp, ...prevOps]); 
+    setCompanyPage("postings"); 
+  };
+
+  // --- Applicant Management Handlers (NEW) ---
+  
+  const handleViewApplicants = (oppId: number) => {
+    setApplicantsModalOppId(oppId); 
+  };
+  
+  const handleViewApplicantProfile = (applicantId: number) => {
+    setViewingApplicantId(applicantId); 
+    setApplicantsModalOppId(null); 
+  };
+
+  const handleBackToApplicants = () => {
+    const applicant = applicants.find(a => a.id === viewingApplicantId); 
+    setViewingApplicantId(null); 
+    if (applicant) { 
+      setApplicantsModalOppId(applicant.oppId); 
+    }
+  };
+
+  const handleOpenAssignTask = (applicantId: number) => {
+    setAssigningTaskApplicantId(applicantId); 
+  };
+
+  const handleSubmitTask = (applicantId: number, task: string) => {
+    setApplicants(prev => 
+      prev.map(app => 
+        app.id === applicantId ? { ...app, task: task } : app
+      )
+    ); 
+    // Also update profile if viewing
+    if(viewingApplicantId === applicantId) { 
+      setViewingApplicantId(null); 
+      setViewingApplicantId(applicantId); 
+    }
+    setAssigningTaskApplicantId(null); 
+  };
+
+  const handleOpenScheduleInterview = (applicantId: number) => {
+    setSchedulingInterviewApplicantId(applicantId); 
+  };
+
+  const handleSubmitInterview = (applicantId: number, dateTime: string) => {
+    setApplicants(prev => 
+      prev.map(app => 
+        app.id === applicantId ? { ...app, interviewTime: dateTime } : app
+      )
+    ); 
+    // Also update profile if viewing
+    if(viewingApplicantId === applicantId) { 
+      setViewingApplicantId(null); 
+      setViewingApplicantId(applicantId); 
+    }
+    setSchedulingInterviewApplicantId(null); 
+  };
+
+  const closeModals = () => { 
+    setModalView(null); 
+    setApplicantsModalOppId(null); 
+    setAssigningTaskApplicantId(null); 
+    setSchedulingInterviewApplicantId(null); 
+  };
+
+  // --- ------------------- ---
+  // --- MAIN RENDER LOGIC ---
+  // --- ------------------- ---
+
+  // 1. Check if user is a company, render company dashboard
+  if (userRole === "company") { 
+    let companyContent;
+    if (viewingApplicantId) { 
+      const applicant = applicants.find(a => a.id === viewingApplicantId); 
+      if (applicant) { 
+        companyContent = (
+          <ApplicantProfilePage
+            applicant={applicant}
+            onBack={handleBackToApplicants}
+            onAssignTask={handleOpenAssignTask}
+            onScheduleInterview={handleOpenScheduleInterview}
+          />
+        );
+      } else { 
+        setViewingApplicantId(null); 
+        companyContent = <CompanyDashboardHome />; 
+      }
+    } else {
+      switch (companyPage) { 
+        case "dashboard":
+          companyContent = <CompanyDashboardHome />; 
+          break;
+        case "postings":
+          companyContent = (
+            <CompanyManagePostings
+              opportunities={opportunities}
+              onViewApplicants={handleViewApplicants}
+              onNavClick={handleCompanyNavClick}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+          ); 
+          break;
+        case "create":
+          companyContent = (
+            <CompanyCreatePosting
+              onCreatePosting={handleCreatePosting}
+              onNavClick={handleCompanyNavClick}
+            />
+          ); 
+          break;
+        default:
+          companyContent = <CompanyDashboardHome />; 
+      }
+    }
+
+    return (
+      <>
+        <CompanyLayout
+          activePage={companyPage}
+          onNavClick={handleCompanyNavClick}
+          onLogout={handleLogout}
+        >
+          {companyContent}
+        </CompanyLayout>
+
+        {/* Company Modals */}
+        {applicantsModalOppId && ( 
+          <ViewApplicantsModal
+            opp={opportunities.find(op => op.id === applicantsModalOppId)!}
+            applicants={applicants}
+            onClose={closeModals}
+            onViewProfile={handleViewApplicantProfile}
+            onAssignTask={handleOpenAssignTask}
+            onScheduleInterview={handleOpenScheduleInterview}
+          /> 
+        )}
+        
+        {assigningTaskApplicantId && ( 
+          <AssignTaskModal
+            applicant={applicants.find(a => a.id === assigningTaskApplicantId)!}
+            onClose={closeModals}
+            onSubmit={handleSubmitTask}
+          />
+        )}
+        
+        {schedulingInterviewApplicantId && ( 
+          <ScheduleInterviewModal
+            applicant={applicants.find(a => a.id === schedulingInterviewApplicantId)!}
+            onClose={closeModals}
+            onSubmit={handleSubmitInterview}
+          />
+        )}
+      </>
+    ); 
+  }
+
+  // 2. User is a student or guest, render student-facing site
+  let pageToRender;
+  switch (currentPage) { 
+    case "home":
+      pageToRender = (
+        <HomePage
+          onNavClick={handleNavClick}
+          onViewDetails={handleViewDetails}
+          onStartPractice={handleStartPractice}
+        />
+      ); 
+      break;
+    case "opportunities":
+      pageToRender = (
+        <OpportunitiesPage
+          opportunities={opportunities} 
+          onViewDetails={handleViewDetails}
+          initialFilter={opportunityFilter}
+        />
+      ); 
+      break;
+    case "opportunityDetail":
+      const selectedOp = opportunities.find(
+        (op) => op.id === selectedOpportunityId
+      ); 
+      if (selectedOp) { 
+        pageToRender = (
+          <OpportunityDetailPage op={selectedOp} onBack={handleBackToOpportunities} />
+        ); 
+      } else {
+        pageToRender = (
+          <OpportunitiesPage
+            opportunities={opportunities} 
+            onViewDetails={handleViewDetails}
+            initialFilter={opportunityFilter}
+          />
+        ); 
+      }
+      break;
+    case "practice":
+      pageToRender = <PracticePage onStartPractice={handleStartPractice} />; 
+      break;
+    case "practiceDetail": 
+      const selectedPractice = mockPracticeItems.find(
+        item => item.id === selectedPracticeId
+      ); 
+      if (selectedPractice) { 
+        pageToRender = (
+          <PracticeDetailPage item={selectedPractice} onQuit={handleQuitPractice} />
+        ); 
+      } else {
+        pageToRender = <PracticePage onStartPractice={handleStartPractice} />; 
+      }
+      break;
+    case "profile":
+      pageToRender = userRole === "student" ? ( 
+        <ProfilePage
+          profile={studentProfile}
+          onLogout={handleLogout}
+          onSaveProfile={handleSaveProfile}
+        />
+      ) : (
+        <HomePage
+          onNavClick={handleNavClick}
+          onViewDetails={handleViewDetails}
+          onStartPractice={handleStartPractice}
+        /> 
+      );
+      break;
+    default:
+      pageToRender = (
+        <HomePage
+          onNavClick={handleNavClick}
+          onViewDetails={handleViewDetails}
+          onStartPractice={handleStartPractice}
+        />
+      ); 
+  }
+
+  return (
+    <>
+      <Layout
+        onNavClick={handleNavClick}
+        userRole={userRole}
+        onLogout={handleLogout}
+        setModalView={(view) => setModalView(view)}
+      >
+        {pageToRender}
+      </Layout>
+
+      {/* Render Auth Modals at the top level */}
+      {modalView === "login" && (
+        <Modal 
+          title="Login" onClose={closeModals}> 
+          <LoginModal
+            onLogin={handleLogin} 
+            onSwitchToSignUp={() => setModalView("signup")}
+          />
+        </Modal>
+      )}
+      {modalView === "signup" && (
+        <Modal title="Sign Up" onClose={closeModals}>
+          <SignUpModal
+            onSignUp={handleSignUp} 
+            onSwitchToLogin={() => setModalView("login")}
+          />
+        </Modal>
+      )}
+    </>
+  ); 
 }
